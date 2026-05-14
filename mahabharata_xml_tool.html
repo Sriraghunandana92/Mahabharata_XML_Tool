@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>महाभारत XML Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f2ead8;
+    --surface:  #faf6ec;
+    --surface2: #f5ede0;
+    --border:   #c8a96a;
+    --border2:  #dfc48a;
+    --crimson:  #7a1515;
+    --saffron:  #c47b1a;
+    --ink:      #1e120a;
+    --muted:    #7a6248;
+    --green:    #2a5c26;
+    --warn:     #7a5200;
+    --blue:     #1a3a7a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  /* Subtle paper grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    z-index: 1000;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--crimson);
+    color: #f5e8d5;
+    padding: 0;
+    border-bottom: 4px double var(--saffron);
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(255,255,255,0.018) 20px,
+      rgba(255,255,255,0.018) 21px
+    );
+    pointer-events: none;
+  }
+
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 48px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .header-devanagari {
+    font-size: 1.4rem;
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  .header-sub {
+    font-size: 0.95rem;
+    opacity: 0.75;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ── Layout ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 44px 48px 80px;
+  }
+
+  /* ── Ornament divider ── */
+  .ornament {
+    text-align: center;
+    color: var(--saffron);
+    font-size: 1.1rem;
+    letter-spacing: 0.6em;
+    margin: 36px 0;
+    opacity: 0.7;
+  }
+
+  /* ── Upload Section ── */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+
+  .upload-box {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 22px 24px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.18s, background 0.18s, transform 0.15s;
+    text-align: center;
+    user-select: none;
+  }
+
+  .upload-box:hover { border-color: var(--crimson); background: #fdf7ed; transform: translateY(-1px); }
+  .upload-box.dragover { border-color: var(--crimson); background: #fdf4e6; border-style: solid; }
+  .upload-box.has-file { border-style: solid; border-color: var(--green); }
+
+  .upload-icon { font-size: 2.2rem; margin-bottom: 10px; }
+
+  .upload-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--crimson);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .upload-hint {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+  }
+
+  .file-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    word-break: break-all;
+    min-height: 1.2em;
+  }
+  .file-name.loaded { color: var(--green); }
+
+  /* ── Process Button ── */
+  .process-btn {
+    display: block;
+    width: 100%;
+    padding: 17px;
+    background: var(--crimson);
+    color: #f5e8d5;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.12s;
+    margin-bottom: 44px;
+    position: relative;
+  }
+
+  .process-btn:hover:not(:disabled) {
+    background: #5e1010;
+    transform: translateY(-1px);
+  }
+
+  .process-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    display: none;
+    text-align: center;
+    padding: 48px 0;
+  }
+
+  .progress-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+
+  .pdot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    animation: pdot 1.4s ease-in-out infinite;
+  }
+  .pdot:nth-child(2) { animation-delay: 0.18s; }
+  .pdot:nth-child(3) { animation-delay: 0.36s; }
+
+  @keyframes pdot {
+    0%,100% { background: var(--border); transform: scale(1); }
+    50%      { background: var(--crimson); transform: scale(1.4); }
+  }
+
+  .progress-text { color: var(--muted); font-style: italic; font-size: 1rem; }
+
+  /* ── Results ── */
+  .results { display: none; }
+  .results.visible { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+
+  .card-head {
+    padding: 14px 22px;
+    background: var(--crimson);
+    color: #f5e8d5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .card-head.green  { background: #2a5c26; }
+  .card-head.amber  { background: var(--warn); }
+  .card-head.navy   { background: var(--blue); }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .badge {
+    padding: 3px 13px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .card-body { padding: 22px 24px; }
+
+  /* ── Stats grid ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    text-align: center;
+    padding: 16px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+  }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--crimson);
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 3px;
+  }
+
+  /* ── Download row ── */
+  .dl-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .dl-btn {
+    padding: 9px 18px;
+    border: 2px solid var(--crimson);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--crimson);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.97rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .dl-btn:hover { background: var(--crimson); color: #f5e8d5; }
+
+  /* ── Banners ── */
+  .ok-banner {
+    background: #edf8ec;
+    border: 1px solid #6ab865;
+    border-radius: 6px;
+    padding: 11px 18px;
+    color: var(--green);
+    font-size: 1rem;
+    margin-bottom: 14px;
+  }
+
+  /* ── Error list ── */
+  .section-head {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 18px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-head::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: 0.25; }
+
+  .err-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    max-height: 280px;
+    display: block;
+    overflow-y: auto;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+  }
+
+  .err-table tr { border-bottom: 1px solid #eee; display: grid; grid-template-columns: 270px 1fr; }
+  .err-table tr:last-child { border-bottom: none; }
+
+  .err-id  { padding: 7px 11px; background: #fdf5f5; color: var(--crimson); border-right: 1px solid #eee; word-break: break-all; }
+  .err-msg { padding: 7px 11px; color: var(--ink); }
+
+  .err-dup  .err-id { background: #fff8ea; color: var(--warn); }
+  .err-ord  .err-id { background: #f0f0ff; color: var(--blue); }
+  .err-mism .err-id { background: #f5f0ff; color: #5a2a8a; }
+
+  /* ── Unmerged tags ── */
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .unm-tag {
+    background: #fff8ea;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--warn);
+  }
+
+  .hint-text {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 0.93rem;
+    margin-bottom: 14px;
+  }
+
+  /* ── Error summary at top of validation ── */
+  .err-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .esbox {
+    padding: 10px 14px;
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid;
+  }
+
+  .esbox-num { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; }
+  .esbox-lbl { font-size: 0.78rem; font-style: italic; color: var(--muted); }
+
+  .esbox.missing { border-color: #ef9898; background: #fdf5f5; }
+  .esbox.missing .esbox-num { color: #b91c1c; }
+  .esbox.duplicate { border-color: #f5c66e; background: #fff8ea; }
+  .esbox.duplicate .esbox-num { color: var(--warn); }
+  .esbox.outoforder { border-color: #a5b4fc; background: #f0f0ff; }
+  .esbox.outoforder .esbox-num { color: var(--blue); }
+  .esbox.mismatch { border-color: #c4b5fd; background: #f5f0ff; }
+  .esbox.mismatch .esbox-num { color: #5a2a8a; }
+
+  .small-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .small-stat {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    text-align: center;
+    padding: 12px 8px;
+  }
+
+  .small-stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .small-stat-lbl { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+
+  @media (max-width: 700px) {
+    main { padding: 24px 18px 60px; }
+    .upload-grid { grid-template-columns: 1fr; }
+    .stat-grid, .err-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 1.4rem; }
+    .header-inner { padding: 20px 18px; }
+    .header-devanagari { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-top">
+      <h1>Mahabharata XML Tool</h1>
+      <span class="header-devanagari">महाभारत</span>
+    </div>
+    <div class="header-sub">Shloka ID Transformer &nbsp;·&nbsp; Bhavadeepa Merger &nbsp;·&nbsp; Flow Validator &nbsp;·&nbsp; Unmerged Checker</div>
+  </div>
+</header>
+
+<main>
+
+  <div class="ornament">❧ &nbsp; ॥ &nbsp; ❧</div>
+
+  <!-- Upload -->
+  <div class="upload-grid">
+    <div class="upload-box" id="boxMain"
+         onclick="document.getElementById('inpMain').click()"
+         ondragover="ev(event,'dragover','boxMain')"
+         ondragleave="ev(event,'dragleave','boxMain')"
+         ondrop="drop(event,'main')">
+      <div class="upload-icon">📜</div>
+      <div class="upload-title">Main Shloka XML</div>
+      <div class="upload-hint">Primary scripture file containing &lt;shloka&gt; elements</div>
+      <div class="file-name" id="nmMain">No file selected — click or drag here</div>
+      <input type="file" id="inpMain" accept=".xml" style="display:none" onchange="loadFile(this,'main')">
+    </div>
+
+    <div class="upload-box" id="boxBhav"
+         onclick="document.getElementById('inpBhav').click()"
+         ondragover="ev(event,'dragover','boxBhav')"
+         ondragleave="ev(event,'dragleave','boxBhav')"
+         ondrop="drop(event,'bhav')">
+      <div class="upload-icon">📖</div>
+      <div class="upload-title">Bhavadeepa Commentary XML</div>
+      <div class="upload-hint">Nilakantha's commentary with &lt;bhavadeepa&gt; elements</div>
+      <div class="file-name" id="nmBhav">No file selected — click or drag here</div>
+      <input type="file" id="inpBhav" accept=".xml" style="display:none" onchange="loadFile(this,'bhav')">
+    </div>
+  </div>
+
+  <button class="process-btn" id="runBtn" disabled onclick="run()">
+    ॥ &nbsp; Transform &nbsp;·&nbsp; Merge &nbsp;·&nbsp; Validate &nbsp; ॥
+  </button>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-dots">
+      <div class="pdot"></div><div class="pdot"></div><div class="pdot"></div>
+    </div>
+    <div class="progress-text" id="progressText">Processing…</div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <!-- Summary card -->
+    <div class="card" id="cardSummary">
+      <div class="card-head">
+        <span class="card-title">Processing Summary</span>
+        <span class="badge" id="bdgOverall"></span>
+      </div>
+      <div class="card-body">
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-num" id="stShlokas">—</div><div class="stat-label">Shlokas Transformed</div></div>
+          <div class="stat-box"><div class="stat-num" id="stBhav">—</div><div class="stat-label">Bhavadeepa Transformed</div></div>
+          <div class="stat-box"><div class="stat-num" id="stMerged">—</div><div class="stat-label">Successfully Merged</div></div>
+          <div class="stat-box"><div class="stat-num" id="stUnmerged" style="color:var(--warn)">—</div><div class="stat-label">Unmerged Bhavadeepa</div></div>
+        </div>
+        <div class="dl-row" id="dlRow"></div>
+      </div>
+    </div>
+
+    <!-- Validation card -->
+    <div class="card">
+      <div class="card-head navy">
+        <span class="card-title">🔍 Shloka Flow Validation</span>
+        <span class="badge" id="bdgVal"></span>
+      </div>
+      <div class="card-body" id="bodyVal"></div>
+    </div>
+
+    <!-- Unmerged card -->
+    <div class="card">
+      <div class="card-head amber" id="headUnm">
+        <span class="card-title">⚠ Unmerged Bhavadeepa IDs</span>
+        <span class="badge" id="bdgUnm"></span>
+      </div>
+      <div class="card-body" id="bodyUnm"></div>
+    </div>
+
+  </div><!-- /results -->
+
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+let S = { mainTxt: null, bhavTxt: null, mainName: '', bhavName: '' };
+
+/* ═══════════════════════════════════════════════════════
+   FILE HANDLING
+═══════════════════════════════════════════════════════ */
+function ev(e, type, id) {
+  e.preventDefault();
+  document.getElementById(id).classList.toggle('dragover', type === 'dragover');
+}
+
+function drop(e, slot) {
+  e.preventDefault();
+  const box = slot === 'main' ? 'boxMain' : 'boxBhav';
+  document.getElementById(box).classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file, slot);
+}
+
+function loadFile(inp, slot) {
+  if (inp.files[0]) readFile(inp.files[0], slot);
+}
+
+function readFile(file, slot) {
+  const r = new FileReader();
+  r.onload = e => {
+    if (slot === 'main') {
+      S.mainTxt = e.target.result; S.mainName = file.name;
+      const nm = document.getElementById('nmMain');
+      nm.textContent = file.name; nm.classList.add('loaded');
+      document.getElementById('boxMain').classList.add('has-file');
+    } else {
+      S.bhavTxt = e.target.result; S.bhavName = file.name;
+      const nm = document.getElementById('nmBhav');
+      nm.textContent = file.name; nm.classList.add('loaded');
+      document.getElementById('boxBhav').classList.add('has-file');
+    }
+    document.getElementById('runBtn').disabled = !(S.mainTxt && S.bhavTxt);
+  };
+  r.readAsText(file, 'UTF-8');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DEVANAGARI → ROMAN
+═══════════════════════════════════════════════════════ */
+const DEVA = { '०':'0','१':'1','२':'2','३':'3','४':'4',
+               '५':'5','६':'6','७':'7','८':'8','९':'9' };
+
+function deva2rom(s) {
+  return s.split('').map(c => DEVA[c] !== undefined ? DEVA[c] : c).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   STEP 1: TRANSFORM IDs
+═══════════════════════════════════════════════════════ */
+function transformDoc(doc) {
+  let sc = 0, bc = 0;
+  for (const adh of doc.querySelectorAll('adhyaya')) {
+    const aid = adh.getAttribute('id');
+    if (!aid) continue;
+
+    for (const s of adh.querySelectorAll('shloka')) {
+      const old = s.getAttribute('shl_id');
+      if (!old) continue;
+      const num = deva2rom(old.trim());
+      s.setAttribute('shl_id', `${aid}_S${num.padStart(3,'0')}`);
+      sc++;
+    }
+
+    for (const b of adh.querySelectorAll('bhavadeepa')) {
+      const old = b.getAttribute('shl_id');
+      if (!old) continue;
+      const num = deva2rom(old.trim());
+      b.setAttribute('shl_id', `${aid}_S${num.padStart(3,'0')}_B01`);
+      bc++;
+    }
+  }
+  return { sc, bc };
+}
+
+/* ═══════════════════════════════════════════════════════
+   STEP 2: MERGE
+═══════════════════════════════════════════════════════ */
+function mergeDocs(mainDoc, bhavDoc) {
+  // Index bhavadeepa elements by their base shloka ID
+  const map = {};
+  for (const b of bhavDoc.querySelectorAll('bhavadeepa')) {
+    const id = b.getAttribute('shl_id') || '';
+    const m = id.match(/^(P\d+_U\d+_A\d+_S\d+)_B\d+$/);
+    if (m) {
+      if (!map[m[1]]) map[m[1]] = [];
+      map[m[1]].push({ el: b, id });
+    }
+  }
+
+  const merged = new Set();
+  let cnt = 0;
+
+  for (const shl of mainDoc.querySelectorAll('shloka')) {
+    const sid = shl.getAttribute('shl_id');
+    if (sid && map[sid]) {
+      for (const { el, id: bid } of map[sid]) {
+        const nb = mainDoc.createElement('bhavadeepa');
+        nb.setAttribute('bhavadeepa_id', bid);
+        for (const ch of el.childNodes) {
+          nb.appendChild(mainDoc.importNode(ch, true));
+        }
+        shl.appendChild(nb);
+        cnt++;
+      }
+      merged.add(sid);
+    }
+  }
+
+  const unmerged = [];
+  for (const [sid, items] of Object.entries(map)) {
+    if (!merged.has(sid)) {
+      for (const { id } of items) unmerged.push(id);
+    }
+  }
+
+  return { cnt, unmerged };
+}
+
+/* ═══════════════════════════════════════════════════════
+   STEP 3: VALIDATE FLOW
+═══════════════════════════════════════════════════════ */
+function parseId(id) {
+  try {
+    const p = id.split('_');
+    if (p.length !== 4) return null;
+    const pv = parseInt(p[0].slice(1));
+    const up = parseInt(p[1].slice(1));
+    const ad = parseInt(p[2].slice(1));
+    const sl = parseInt(p[3].slice(1));
+    if ([pv,up,ad,sl].some(isNaN)) return null;
+    return { pv, up, ad, sl };
+  } catch { return null; }
+}
+
+function validateDoc(doc) {
+  const errors = [];
+  const parvas = [];
+  const upByP = {};   // p → [u]
+  const adhByP = {};  // p → [[a, u, attr]]
+  const shlByAdh = {};// "p_u_a" → [[s, id]]
+  const seen = {};
+
+  for (const parva of doc.querySelectorAll('parva')) {
+    const pAttr = parva.getAttribute('id') || '';
+    const pn = parseInt(pAttr.slice(1));
+    if (isNaN(pn)) continue;
+    parvas.push(pn);
+
+    for (const up of parva.querySelectorAll('upaparva')) {
+      const uAttr = up.getAttribute('id') || '';
+      const un = parseInt((uAttr.split('_')[1] || '').slice(1));
+      if (isNaN(un)) continue;
+      (upByP[pn] = upByP[pn]||[]).push(un);
+
+      for (const adh of up.querySelectorAll('adhyaya')) {
+        const aAttr = adh.getAttribute('id') || '';
+        const an = parseInt((aAttr.split('_')[2] || '').slice(1));
+        if (isNaN(an)) continue;
+        (adhByP[pn] = adhByP[pn]||[]).push([an, un, aAttr]);
+
+        for (const shl of adh.querySelectorAll('shloka')) {
+          const sid = (shl.getAttribute('shl_id')||'').trim();
+          if (!sid) { errors.push({ type:'other', id:'(unknown)', msg:'shloka missing shl_id' }); continue; }
+
+          if (seen[sid]) { errors.push({ type:'duplicate', id:sid, msg:'DUPLICATE id' }); }
+          seen[sid] = true;
+
+          const parsed = parseId(sid);
+          if (!parsed) { errors.push({ type:'other', id:sid, msg:'Cannot parse shloka id format' }); continue; }
+
+          if (parsed.pv !== pn) errors.push({ type:'mismatch', id:sid, msg:`Parva mismatch: shl_id says P${String(parsed.pv).padStart(2,'0')} but enclosing parva is ${pAttr}` });
+          if (parsed.up !== un) errors.push({ type:'mismatch', id:sid, msg:`Upaparva mismatch: shl_id says U${String(parsed.up).padStart(2,'0')} but enclosing is ${uAttr}` });
+          if (parsed.ad !== an) errors.push({ type:'mismatch', id:sid, msg:`Adhyaya mismatch: shl_id says A${String(parsed.ad).padStart(3,'0')} but enclosing is ${aAttr}` });
+
+          const key = `${pn}_${un}_${an}`;
+          (shlByAdh[key] = shlByAdh[key]||[]).push([parsed.sl, sid]);
+        }
+      }
+    }
+  }
+
+  // Parva sequence
+  seq(parvas, 'parva', null, errors);
+
+  // Upaparva sequence per parva
+  for (const [pn, nums] of Object.entries(upByP)) {
+    seq(nums, 'upaparva', `P${String(pn).padStart(2,'0')}`, errors);
+  }
+
+  // Adhyaya sequence per parva (global)
+  for (const [pn, entries] of Object.entries(adhByP)) {
+    seq(entries.map(([a])=>a), 'adhyaya', `P${String(pn).padStart(2,'0')}`, errors);
+  }
+
+  // Shloka sequence per adhyaya
+  for (const [key, shls] of Object.entries(shlByAdh)) {
+    const [pn, un, an] = key.split('_').map(Number);
+    const prefix = `P${String(pn).padStart(2,'0')}_U${String(un).padStart(2,'0')}_A${String(an).padStart(3,'0')}`;
+    const nums = shls.map(([s])=>s);
+    const maxS = Math.max(...nums);
+    const found = new Set(nums);
+
+    if (Math.min(...nums) !== 1) {
+      errors.push({ type:'missing', id:shls[0][1], msg:`Adhyaya ${prefix} does not start at S001 (starts at S${String(Math.min(...nums)).padStart(3,'0')})` });
+    }
+    for (let n=1; n<=maxS; n++) {
+      if (!found.has(n)) errors.push({ type:'missing', id:`${prefix}_S${String(n).padStart(3,'0')}`, msg:`MISSING shloka S${String(n).padStart(3,'0')} in ${prefix}` });
+    }
+    let prev = 0;
+    for (const [sn, sid] of shls) {
+      if (sn < prev) errors.push({ type:'outoforder', id:sid, msg:`OUT-OF-ORDER: S${String(sn).padStart(3,'0')} after S${String(prev).padStart(3,'0')} in ${prefix}` });
+      prev = sn;
+    }
+  }
+
+  const totShl  = Object.values(shlByAdh).reduce((a,b)=>a+b.length, 0);
+  const totAdh  = Object.values(adhByP).reduce((a,b)=>a+b.length, 0);
+  const totUp   = Object.values(upByP).reduce((a,b)=>a+b.length, 0);
+
+  return { errors, stats: { parvas: parvas.length, upaparvas: totUp, adhyayas: totAdh, shlokas: totShl } };
+}
+
+function seq(nums, level, ctx, errors) {
+  if (!nums.length) return;
+  const max = Math.max(...nums);
+  const found = new Set(nums);
+  const cnt = {};
+  nums.forEach(n => cnt[n] = (cnt[n]||0)+1);
+  for (let n=1; n<=max; n++) {
+    if (!found.has(n)) {
+      const id = fmtId(level, n, ctx);
+      errors.push({ type:'missing', id, msg:`MISSING ${level} (gap in sequence)` });
+    }
+  }
+  for (const [n,c] of Object.entries(cnt)) {
+    if (c>1) {
+      const id = fmtId(level, parseInt(n), ctx);
+      errors.push({ type:'duplicate', id, msg:`DUPLICATE ${level} appears ${c} times` });
+    }
+  }
+}
+
+function fmtId(level, n, ctx) {
+  const pad = level === 'shloka' || level === 'adhyaya' ? 3 : 2;
+  const L = { parva:'P', upaparva:'U', adhyaya:'A', shloka:'S' }[level];
+  const suffix = `${L}${String(n).padStart(pad,'0')}`;
+  return ctx ? `${ctx}_${suffix}` : suffix;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SERIALIZE
+═══════════════════════════════════════════════════════ */
+function ser(doc) {
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    new XMLSerializer().serializeToString(doc.documentElement);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DOWNLOAD HELPERS
+═══════════════════════════════════════════════════════ */
+function dlXml(content, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type:'application/xml;charset=utf-8' }));
+  a.download = name; a.click();
+}
+
+function dlReport() {
+  const D = window.__OUT__;
+  let r = 'MAHABHARATA XML PROCESSING REPORT\n' + '='.repeat(60) + '\n\n';
+  r += `TRANSFORM\n`;
+  r += `  Shlokas transformed  : ${D.sc}\n`;
+  r += `  Bhavadeepa transformed: ${D.bc}\n`;
+  r += `  Bhavadeepa merged    : ${D.mergedCnt}\n`;
+  r += `  Unmerged bhavadeepa  : ${D.unmerged.length}\n\n`;
+
+  r += `STRUCTURE (post-merge)\n`;
+  r += `  Parvas    : ${D.vStats.parvas}\n`;
+  r += `  Upaparvas : ${D.vStats.upaparvas}\n`;
+  r += `  Adhyayas  : ${D.vStats.adhyayas}\n`;
+  r += `  Shlokas   : ${D.vStats.shlokas}\n\n`;
+
+  if (!D.errors.length) {
+    r += 'VALIDATION : No errors — all sequences valid.\n\n';
+  } else {
+    r += `VALIDATION ERRORS (${D.errors.length})\n` + '-'.repeat(60) + '\n';
+    D.errors.forEach(e => r += `[${e.type.toUpperCase().padEnd(10)}]  ${e.id.padEnd(40)}  ${e.msg}\n`);
+    r += '\n';
+  }
+
+  if (!D.unmerged.length) {
+    r += 'UNMERGED BHAVADEEPA : All merged successfully.\n';
+  } else {
+    r += `UNMERGED BHAVADEEPA (${D.unmerged.length})\n` + '-'.repeat(60) + '\n';
+    D.unmerged.forEach(id => r += id + '\n');
+  }
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([r], { type:'text/plain;charset=utf-8' }));
+  a.download = 'mbh_processing_report.txt'; a.click();
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN PIPELINE
+═══════════════════════════════════════════════════════ */
+async function run() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('results').classList.remove('visible');
+
+  const prog = t => { document.getElementById('progressText').textContent = t; };
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+  const parser = new DOMParser();
+
+  prog('Parsing XML files…'); await pause(60);
+
+  const mainDoc = parser.parseFromString(S.mainTxt, 'application/xml');
+  const bhavDoc = parser.parseFromString(S.bhavTxt, 'application/xml');
+
+  if (mainDoc.querySelector('parsererror') || bhavDoc.querySelector('parsererror')) {
+    alert('❌ XML parse error — please check both files are valid XML.');
+    document.getElementById('progressWrap').style.display = 'none';
+    btn.disabled = false; return;
+  }
+
+  // Step 1: Transform
+  prog('Transforming Devanagari shloka IDs…'); await pause(60);
+  const { sc } = transformDoc(mainDoc);
+  const { bc } = transformDoc(bhavDoc);
+
+  // Serialize transformed main BEFORE merge (so user gets clean pre-merge copy)
+  const xmlTransformed = ser(mainDoc);
+  const xmlBhavTransformed = ser(bhavDoc);
+
+  // Step 2: Merge
+  prog('Merging bhavadeepa commentary into shlokas…'); await pause(60);
+  const { cnt: mergedCnt, unmerged } = mergeDocs(mainDoc, bhavDoc);
+  const xmlMerged = ser(mainDoc);
+
+  // Step 3: Validate
+  prog('Validating shloka ID sequences…'); await pause(60);
+  const { errors, stats: vStats } = validateDoc(mainDoc);
+
+  // Store for download closures
+  window.__OUT__ = { sc, bc, mergedCnt, unmerged, errors, vStats,
+                     xmlTransformed, xmlBhavTransformed, xmlMerged };
+
+  document.getElementById('progressWrap').style.display = 'none';
+
+  /* ── Render ── */
+  const base = S.mainName.replace(/\.xml$/i, '');
+  const bhavBase = S.bhavName.replace(/\.xml$/i, '');
+
+  // Stats
+  $('stShlokas').textContent  = sc;
+  $('stBhav').textContent     = bc;
+  $('stMerged').textContent   = mergedCnt;
+  $('stUnmerged').textContent = unmerged.length;
+
+  const allGood = !errors.length && !unmerged.length;
+  const bdgOv = $('bdgOverall');
+  bdgOv.textContent = allGood ? '✓ All Clear' : `${errors.length + unmerged.length} Issues`;
+  bdgOv.style.background = allGood ? 'rgba(80,180,80,0.3)' : 'rgba(255,100,100,0.3)';
+
+  // Downloads
+  $('dlRow').innerHTML = `
+    <button class="dl-btn" onclick="dlXml(window.__OUT__.xmlTransformed,'${base}_transformed.xml')">⬇ Transformed Shloka XML</button>
+    <button class="dl-btn" onclick="dlXml(window.__OUT__.xmlBhavTransformed,'${bhavBase}_transformed.xml')">⬇ Transformed Bhavadeepa XML</button>
+    <button class="dl-btn" onclick="dlXml(window.__OUT__.xmlMerged,'${base}_merged.xml')">⬇ Merged XML</button>
+    <button class="dl-btn" onclick="dlReport()">⬇ Full Report (.txt)</button>
+  `;
+
+  /* ── Validation panel ── */
+  const vBadge = $('bdgVal');
+  const vBody  = $('bodyVal');
+
+  const groups = { missing:[], duplicate:[], outoforder:[], mismatch:[], other:[] };
+  errors.forEach(e => (groups[e.type] = groups[e.type]||[]).push(e));
+
+  if (!errors.length) {
+    vBadge.textContent = '✓ No errors';
+    vBadge.style.background = 'rgba(80,180,80,0.3)';
+    vBody.innerHTML = `
+      <div class="ok-banner">✅ All shloka sequences are valid — no gaps, duplicates, or ordering issues found.</div>
+      <div class="small-stat-grid">
+        <div class="small-stat"><div class="small-stat-num">${vStats.parvas}</div><div class="small-stat-lbl">Parvas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.upaparvas}</div><div class="small-stat-lbl">Upaparvas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.adhyayas}</div><div class="small-stat-lbl">Adhyayas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.shlokas}</div><div class="small-stat-lbl">Shlokas</div></div>
+      </div>`;
+  } else {
+    vBadge.textContent = `${errors.length} errors`;
+    vBadge.style.background = 'rgba(255,100,100,0.3)';
+
+    let html = `
+      <div class="err-summary-grid">
+        <div class="esbox missing">  <div class="esbox-num">${groups.missing.length}</div>   <div class="esbox-lbl">Missing</div></div>
+        <div class="esbox duplicate"><div class="esbox-num">${groups.duplicate.length}</div> <div class="esbox-lbl">Duplicate</div></div>
+        <div class="esbox outoforder"><div class="esbox-num">${groups.outoforder.length}</div><div class="esbox-lbl">Out-of-order</div></div>
+        <div class="esbox mismatch"><div class="esbox-num">${groups.mismatch.length}</div>   <div class="esbox-lbl">Mismatch</div></div>
+      </div>
+      <div class="small-stat-grid" style="margin-bottom:18px">
+        <div class="small-stat"><div class="small-stat-num">${vStats.parvas}</div><div class="small-stat-lbl">Parvas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.upaparvas}</div><div class="small-stat-lbl">Upaparvas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.adhyayas}</div><div class="small-stat-lbl">Adhyayas</div></div>
+        <div class="small-stat"><div class="small-stat-num">${vStats.shlokas}</div><div class="small-stat-lbl">Shlokas</div></div>
+      </div>
+    `;
+
+    const errDefs = [
+      { key:'missing',    label:'Missing',      color:'#b91c1c', cls:'err-mis' },
+      { key:'duplicate',  label:'Duplicate',    color:' var(--warn)', cls:'err-dup' },
+      { key:'outoforder', label:'Out-of-Order', color:'var(--blue)',  cls:'err-ord' },
+      { key:'mismatch',   label:'Mismatch',     color:'#5a2a8a', cls:'err-mism' },
+      { key:'other',      label:'Other',        color:'#555',    cls:'' },
+    ];
+
+    for (const { key, label, color, cls } of errDefs) {
+      if (!groups[key] || !groups[key].length) continue;
+      html += `<div class="section-head" style="color:${color}">${label} &nbsp;(${groups[key].length})</div>`;
+      html += `<table class="err-table">`;
+      for (const e of groups[key]) {
+        html += `<tr class="${cls}"><td class="err-id">${esc(e.id)}</td><td class="err-msg">${esc(e.msg)}</td></tr>`;
+      }
+      html += `</table>`;
+    }
+
+    vBody.innerHTML = html;
+  }
+
+  /* ── Unmerged panel ── */
+  const uBadge = $('bdgUnm');
+  const uBody  = $('bodyUnm');
+  const uHead  = $('headUnm');
+
+  if (!unmerged.length) {
+    uHead.classList.replace('amber','green');
+    uBadge.textContent = '✓ All merged';
+    uBadge.style.background = 'rgba(80,180,80,0.3)';
+    uBody.innerHTML = `<div class="ok-banner">✅ Every bhavadeepa element was successfully matched and merged into its corresponding shloka.</div>`;
+  } else {
+    uBadge.textContent = `${unmerged.length} unmatched`;
+    uBadge.style.background = 'rgba(255,220,80,0.4)';
+    uBody.innerHTML = `
+      <p class="hint-text">These bhavadeepa IDs could not be matched to any shloka in the main file. The shloka may be missing from the main XML, or there is an ID mismatch between the two files.</p>
+      <div class="tag-cloud">${unmerged.sort().map(id=>`<span class="unm-tag">${esc(id)}</span>`).join('')}</div>
+    `;
+  }
+
+  $('results').classList.add('visible');
+  $('results').scrollIntoView({ behavior:'smooth', block:'start' });
+  btn.disabled = false;
+}
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+
+</body>
+</html>
